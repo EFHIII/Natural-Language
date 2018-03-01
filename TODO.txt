@@ -1,0 +1,18 @@
+- 1,000,000 word vectors (word embeddings) form Facebook's FastText
+
+- Network plan:
+- turn million word vectors into an object and save as a .JSON
+- ~100 word history/channel
+- save channel histories as .JSON in the form {{[w1,w2,e3...],[msg],[msg]},{channel},{channel}...}
+- train via taking history and back-propogating responses
+
+-Network design:
+
+input:[100 wordVec history(each word=300 nodes)]
+total 30,000 input nodes
+
+output:[terminate?,optimal-wordVec (300 nodes)]
+
+using:
+- npm: brain
+- npm: vector object
