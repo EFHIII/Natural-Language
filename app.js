@@ -1,12 +1,51 @@
 const Discord = require("discord.js");
 const fs = require("fs");
 var readline = require('readline');
+var kdt = require("kd.tree");
+
+
+
+/*{example
+var coords = [
+  { name: 'Gramercy Theatre',
+    loc: {lat: '40.739683', long: '73.985151'} },
+  { name: 'Blue Note Jazz Club',
+    loc: {lat: '40.730601', long: '74.000447'} },
+  { name: 'Milk Studios',
+    loc: {lat: '40.742256', long: '74.006344'} },
+  { name: 'Greenroom Brooklyn',
+    loc: {lat: '40.691805', long: '73.908089'} }
+].map(function (v) {
+  return v.loc
+})
+
+var distance = function(a, b){
+  return Math.pow(a.lat - b.lat, 2) +  Math.pow(a.long - b.long, 2);
+}
+
+var tree = kdt.createKdTree(coords, distance, ['lat', 'long'])
+
+var nearest = tree.nearest({ lat: 40, long: 75 }, 4);
+
+console.log(nearest.reverse());
+//}*/
+
 
 const client=new Discord.Client();
 //const subjects=require('./subjects.json');
 
 var lines=0;
-var dictionary = {};
+var dictionary={};
+var wordData=[];
+var tree;
+function dif(a,b){
+	var sum=0;
+	for(var i=a.vec.length-1;i>=0;i--){
+		var c=a.vec[i]-b.vec[i];
+		sum+=c*c;
+	}
+	return(sum);
+};
 readline.createInterface({
     input: fs.createReadStream('dictionary.vec'),
     terminal: false
@@ -14,11 +53,15 @@ readline.createInterface({
 	var data=line.split(' ');
 	var word=data.shift();
 	data.pop();
-	dictionary[word]=eval('['+data.join(',')+']');
+	var data=eval('['+data.join(',')+']');
+	dictionary[word]=data;
+	wordData.push({word:word,vec:data});
 	if(lines%10000==0){console.log((lines/10000)+'%');}
 	lines++;
 }).on('close', function(line) {
-   console.log('Dictionary made');
+	tree=kdt.createKdTree(wordData, dif, ['word', 'vec']);
+	console.log('Dictionary made');
+	client.login('NDE4ODEzNjMyMjEwNzk2NTU0.DXnCcg.ctvfcgun7GqV2tQwNC7_AHI5pVY');
 });
 
 const pre="!";
@@ -36,6 +79,15 @@ function save(a,b){
 		//console.log('User data saved.');
 	});
 };
+
+function dist(a,b){
+	var sum=0;
+	for(var i=a.length-1;i>=0;i--){
+		var c=a[i]-b[i];
+		sum+=c*c;
+	}
+	return(Math.sqrt(sum));
+};
 //}
 
 //{commands
@@ -50,7 +102,7 @@ const GeneralCommands={
 	},
 	version:function(){
 		return("https://github.com/EFHIII/Natural-Language");
-	},
+	},/*
 	help:function(msg,args){
 		if(args.length===0){
 			msg.author.send("```md\nHelp\n====\n * The prefix "+pre+" must be used at the beginning of any bot command *\n\n"+
@@ -82,6 +134,7 @@ const GeneralCommands={
 			else{return(args[0]+' is not a supported function.');}
 		}
 	},
+	*/
 	ping:function(){
 		return('Ping!');
 	},
@@ -98,16 +151,37 @@ const GeneralCommands={
 		else{
 			return('You rolled a '+Math.floor(Math.random()*parseInt(args[0])+1)+'!');
 		}
-	}
-};
-const devCommands={
-	dic:function(msg,args){
-		console.log(JSON.stringify(dictionary[args[0]]));
+	},
+	dif:function(msg,args){
+		//console.log(JSON.stringify(dictionary[args[0]]));
+		
+		if(args.length>1&&dictionary.hasOwnProperty(args[0])&&dictionary.hasOwnProperty(args[1])){
+			return(dist(dictionary[args[0]],dictionary[args[1]]));
+		}
+		else{
+			return(args[0]+" and/or "+args[1]+" isn't in my dictionary.");
+		}
+	},
+	close:function(msg,args){
 		if(dictionary.hasOwnProperty(args[0])){
-			return(dictionary[args[0]]);
+			var closest=tree.nearest({word:'',vec:dictionary[args[0]]},2);
+			//console.log(JSON.stringify(closest));
+			return('The next closest word in my database is "'+closest[1][0].word+'"');
 		}
 		else{
 			return(args[0]+" isn't in my dictionary.");
+		}
+	},
+};
+const devCommands={
+	dif:function(msg,args){
+		//console.log(JSON.stringify(dictionary[args[0]]));
+		
+		if(args.length>1&&dictionary.hasOwnProperty(args[0])&&dictionary.hasOwnProperty(args[1])){
+			return(dist(dictionary[args[0]],dictionary[args[1]]));
+		}
+		else{
+			return(args[0]+" and/or "+args[1]+" isn't in my dictionary.");
 		}
 	},
 };
@@ -116,7 +190,7 @@ const devCommands={
 //{client events
 client.on('ready', () => {
 	console.log(`${client.user.tag} online`);
-	client.user.setGame(`human`,'https://www.twitch.tv/efhiii');
+	client.user.setGame(`human`);
 });
 
 client.on("guildCreate", guild => {
@@ -130,7 +204,7 @@ client.on("guildDelete", guild => {
 client.on('message', msg => {
 	//console.log(msg.author.tag+": "+msg.content);
 	if(msg.author.bot){return;}
-	let m=msg.content.toLowerCase();
+	//let m=msg.content.toLowerCase();
 	if(m[0]!==pre){
 		if(m[0]==='-'){
 			m=m.substr(1,m.length-2);
@@ -182,6 +256,5 @@ client.on('message', msg => {
 	}
 });
 
-client.login('NDE4ODEzNjMyMjEwNzk2NTU0.DXnCcg.ctvfcgun7GqV2tQwNC7_AHI5pVY');
 //}
 
